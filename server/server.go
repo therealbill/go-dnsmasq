@@ -16,7 +16,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-systemd/activation"
 	"github.com/janeczku/go-dnsmasq/cache"
-	"github.com/janeczku/go-dnsmasq/stats"
+	stats "github.com/janeczku/go-dnsmasq/stats/prometheus"
 	"github.com/miekg/dns"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )

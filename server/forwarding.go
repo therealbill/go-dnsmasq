@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/janeczku/go-dnsmasq/stats"
+	stats "github.com/janeczku/go-dnsmasq/stats/prometheus"
 	"github.com/miekg/dns"
 )
 
