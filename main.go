@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/syslog"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
@@ -15,6 +16,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	goji "goji.io"
+	"goji.io/pat"
 
 	log "github.com/Sirupsen/logrus"
 	logrus_syslog "github.com/Sirupsen/logrus/hooks/syslog"
@@ -155,6 +159,12 @@ func main() {
 			Name:   "multithreading",
 			Usage:  "Enable multithreading (experimental)",
 			EnvVar: "DNSMASQ_MULTITHREADING",
+		},
+		cli.IntFlag{
+			Name:   "httpport",
+			Value:  9181,
+			Usage:  "Port to serve HTTP (for prometheus)",
+			EnvVar: "DNSMASQ_HTTPPORT",
 		},
 	}
 	app.Action = func(c *cli.Context) error {
@@ -335,6 +345,11 @@ func main() {
 				exitReason <- err
 			}
 		}()
+
+		mux := goji.NewMux()
+		mux.Handle(pat.Get("/metrics"), server.PromHandler())
+		la := fmt.Sprintf("0.0.0.0:%d", c.Int("httpport"))
+		go http.ListenAndServe(la, mux)
 
 		exitErr = <-exitReason
 		if exitErr != nil {

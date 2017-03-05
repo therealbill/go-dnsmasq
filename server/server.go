@@ -8,6 +8,7 @@ package server
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -15,7 +16,9 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-systemd/activation"
 	"github.com/janeczku/go-dnsmasq/cache"
+	"github.com/janeczku/go-dnsmasq/stats"
 	"github.com/miekg/dns"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type server struct {
@@ -172,9 +175,14 @@ func (s *server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	}
 
 	StatsRequestCount.Inc(1)
+	defer func(begun time.Time) {
+		stats.RequestsDuration.Observe(time.Since(begun).Seconds())
+	}(time.Now())
+	stats.RequestsGauge.Inc()
 
 	if dnssec {
 		StatsDnssecOkCount.Inc(1)
+		stats.DNSSECRequestsGauge.Inc()
 	}
 
 	log.Debugf("[%d] Got query for '%s %s' from %s", req.Id, dns.TypeToString[q.Qtype], q.Name, w.RemoteAddr().String())
@@ -202,10 +210,12 @@ func (s *server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 			log.Errorf("Failed to return reply %q", err)
 		}
 		StatsCacheHit.Inc(1)
+		stats.CacheHitGauge.Inc()
 		return
 	}
 
 	StatsCacheMiss.Inc(1)
+	stats.CacheMissGauge.Inc()
 
 	defer func() {
 		if local {
@@ -373,4 +383,9 @@ func (s *server) RoundRobin(rrs []dns.RR) {
 func isTCP(w dns.ResponseWriter) bool {
 	_, ok := w.RemoteAddr().(*net.TCPAddr)
 	return ok
+}
+
+// return the prometheus handler
+func PromHandler() http.Handler {
+	return promhttp.Handler()
 }
